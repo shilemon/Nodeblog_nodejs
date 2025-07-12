@@ -1,0 +1,22 @@
+extends layout
+
+block content
+  if posts
+    each post, i in posts
+      .post
+        h1
+          a(href='/posts/show/#{post._id}')
+            =post.title
+        p.meta Posted in 
+          span.tag
+            a(href='/categories/show/#{post.category}') &nbsp; #{ post.category } &nbsp;
+          span &nbsp; on #{moment(post.date).format("MM-DD-YYYY")}
+        img.thumb(src='/images/uploads/#{post.thumbimage}')
+        .body
+          if post.body.length > 200
+            !=truncateText(post.body, 200)
+          else
+            !=post.body
+        a.more(href='/posts/show/#{post._id}') Read More
+  else
+    p.no-post No Posts to Display Yet! Start Writing!
