@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "0.0.0.0:3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://root:example@mongo:27017/nodeblog?authSource=admin
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    networks:
+      - nodeblog-network
+
+  mongo:
+    image: mongo:6
+    container_name: mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    restart: unless-stopped
+    networks:
+      - nodeblog-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  nodeblog-network:
+    driver: bridge

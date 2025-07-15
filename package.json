@@ -11,6 +11,7 @@
     "connect-flash": "*",
     "cookie-parser": "~1.4.3",
     "debug": "~2.2.0",
+    "dotenv": "^17.2.0",
     "emailjs": "^4.0.3",
     "express": "~4.13.4",
     "express-messages": "*",
