@@ -7,19 +7,23 @@
   },
   "dependencies": {
     "body-parser": "~1.15.1",
+    "ckeditor": "^4.12.1",
+    "connect-flash": "*",
     "cookie-parser": "~1.4.3",
     "debug": "~2.2.0",
+    "emailjs": "^4.0.3",
     "express": "~4.13.4",
+    "express-messages": "*",
+    "express-session": "*",
+    "express-validator": "*",
     "jade": "~1.11.0",
+    "moment": "*",
+    "mongodb": "*",
+    "monk": "^7.3.4",
     "morgan": "~1.7.0",
-    "serve-favicon": "~2.3.0",
-	"mongodb": "*",
-	"monk": "*",
-	"connect-flash": "*",
-	"express-validator": "*",
-	"express-session": "*",
-	"express-messages": "*",
-	"multer": "*",
-	"moment": "*"
+    "multer": "^2.0.1",
+    "passport": "^0.7.0",
+    "rss": "^1.2.2",
+    "serve-favicon": "~2.3.0"
   }
 }

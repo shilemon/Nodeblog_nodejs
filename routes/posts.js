@@ -1,32 +1,34 @@
-var express = require('express');
-var router = express.Router();
-var mongo = require('mongodb');
-var ObjectID = require('mongodb').ObjectID;
-var db = require('monk')('localhost/nodeblog');
-var multer  = require('multer');
-var storage = multer.diskStorage({
+const express = require('express');
+const router = express.Router();
+const mongo = require('mongodb');
+const ObjectID = require('mongodb').ObjectID;
+const db = require('monk')('localhost/nodeblog');
+const multer = require('multer');
+const { body, validationResult } = require('express-validator');
+
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, './public/images/uploads/');
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname );
+    cb(null, file.originalname);
   }
-})
-var upload = multer({ storage: storage });
+});
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  var posts = db.get('posts');
-  posts.find({}, {}, function(err, posts){
-    res.render('index', {"posts": posts, "title": "Posts"});
+const upload = multer({ storage: storage });
+
+router.get('/', function(req, res) {
+  const posts = db.get('posts');
+  posts.find({}, {}, function(err, posts) {
+    res.render('index', { "posts": posts, "title": "Posts" });
   });
 });
 
-router.get('/show/:id', function(req, res, next){
-  var posts = db.get('posts');
-  var id = new ObjectID(req.params.id);
-  posts.findOne({"_id": id}, {}, function(err, post){
-    if(err) throw err;
+router.get('/show/:id', function(req, res) {
+  const posts = db.get('posts');
+  const id = new ObjectID(req.params.id);
+  posts.findOne({ "_id": id }, {}, function(err, post) {
+    if (err) throw err;
     res.render('showpost', {
       "title": post.title,
       "post": post
@@ -34,13 +36,13 @@ router.get('/show/:id', function(req, res, next){
   });
 });
 
-router.get('/edit/:id', function(req, res, next){
-  var posts = db.get('posts');
-  var categories = db.get('categories');
-  var id = new ObjectID(req.params.id);
-  categories.find({}, {}, function(err, categories){
-    posts.findOne({"_id": id}, {}, function(err, post){
-      if(err) throw err;
+router.get('/edit/:id', function(req, res) {
+  const posts = db.get('posts');
+  const categories = db.get('categories');
+  const id = new ObjectID(req.params.id);
+  categories.find({}, {}, function(err, categories) {
+    posts.findOne({ "_id": id }, {}, function(err, post) {
+      if (err) throw err;
       res.render('editpost', {
         "title": post.title,
         "post": post,
@@ -50,196 +52,137 @@ router.get('/edit/:id', function(req, res, next){
   });
 });
 
-router.get('/add', function(req, res, next){
-  var categories = db.get('categories');
-  categories.find({}, {}, function(err, categories){
+router.get('/add', function(req, res) {
+  const categories = db.get('categories');
+  categories.find({}, {}, function(err, categories) {
     res.render('addpost', {
       "title": "Add Post",
       "categories": categories
     });
   });
-  
 });
 
-router.post('/addcomment', function(req,res,next){
-  var title = req.body.title;
-  var name = req.body.name;
-  var postId = req.body.postid;
-  var body = req.body.body;
-  var commentDate = new Date();
-  var posts = db.get('posts');
-  var id = new ObjectID(postId);
-  
-  req.checkBody('title', "Title Field is required").notEmpty();
-  req.checkBody('name', "Name Field is required").notEmpty();
-  req.checkBody('body', "Body Field is required").notEmpty();
+router.post('/addcomment', [
+  body('title').notEmpty().withMessage('Title Field is required'),
+  body('name').notEmpty().withMessage('Name Field is required'),
+  body('body').notEmpty().withMessage('Body Field is required')
+], function(req, res) {
+  const errors = validationResult(req);
+  const { title, name, postid, body: bodyContent } = req.body;
+  const posts = db.get('posts');
+  const id = new ObjectID(postid);
 
-  var errors = req.validationErrors();
-  if(errors){
-    posts.findOne({"_id": id}, {}, function(err, post){
-      if(err) throw err;
+  if (!errors.isEmpty()) {
+    posts.findOne({ "_id": id }, {}, function(err, post) {
+      if (err) throw err;
       res.render('showpost', {
         "title": post.title,
         "post": post,
-        "errors": errors
+        "errors": errors.array()
       });
     });
-  }
-  else{
-    var comment = {
-      "title": title,
-      "name": name,
-      "body": body,
-      "data": commentDate
+  } else {
+    const comment = {
+      title,
+      name,
+      body: bodyContent,
+      date: new Date()
     };
-    posts.update({
-      "_id": id
-    },
-    {
-      $push:{
-        "comments": comment
-      }
-    }, function(err, doc){
-      if(err) throw err;
+
+    posts.update({ "_id": id }, { $push: { "comments": comment } }, function(err) {
+      if (err) throw err;
       req.flash('success', 'Comment created');
-      res.location('/posts/show/'+postId);
-      res.redirect('/posts/show/'+postId);
-    }
-    );
+      res.redirect('/posts/show/' + postid);
+    });
   }
 });
 
-router.post('/add', [upload.single('thumbimage'), function(req, res, next){
-  // get form values
-  var title = req.body.title,
-      category = req.body.category,
-      body = req.body.body;
-  var date = new Date();
-  
-  if(req.file){
-    var thumbImageOName = req.file.originalname,
-        thumbImageName = req.file.filename,
-        thumbImageMime = req.file.mimetype,
-        thumbImagePath = req.file.path,
-        thumbImageExt = thumbImageMime.split('/')[1],
-        thumbImageSize = req.file.size;
-  }
-  else{
-    var thumbImageName = 'noimage.png';
-  }
-  
-  // Validattion
-  req.checkBody('title', 'Title Field is required').notEmpty();
-	req.checkBody('body', 'Body Field is required').notEmpty();
-  
-  // check errors
-  var errors = req.validationErrors();
-  
-  if(errors){
-    var categories = db.get('categories');
-    categories.find({}, {}, function(err, categories){
+router.post('/add', upload.single('thumbimage'), [
+  body('title').notEmpty().withMessage('Title Field is required'),
+  body('body').notEmpty().withMessage('Body Field is required')
+], function(req, res) {
+  const errors = validationResult(req);
+  const { title, category, body: bodyContent } = req.body;
+  const date = new Date();
+  const thumbImageName = req.file ? req.file.filename : 'noimage.png';
+  const posts = db.get('posts');
+
+  if (!errors.isEmpty()) {
+    const categories = db.get('categories');
+    categories.find({}, {}, function(err, categories) {
       res.render('addpost', {
-        "errors": errors,
+        "errors": errors.array(),
         "title": title,
-        "body": body,
+        "body": bodyContent,
         "categories": categories
       });
     });
-  }
-  else{
-    var posts = db.get('posts');
+  } else {
     posts.insert({
-      "title": title,
-      "body": body,
-      "category": category,
-      "date": date,
-      "thumbimage": thumbImageName
-    }, function(err, post){
-      if(err) {
+      title,
+      body: bodyContent,
+      category,
+      date,
+      thumbimage: thumbImageName
+    }, function(err) {
+      if (err) {
         res.send("There was an issue submitting the post");
-      }
-      else{
+      } else {
         req.flash('success', 'Post Submitted');
-        res.location('/');
         res.redirect('/');
       }
     });
   }
-}]);
+});
 
-router.post('/edit', [upload.single('thumbimage'), function(req, res, next){
-  // get form values
-  var title = req.body.title,
-      category = req.body.category,
-      body = req.body.body,
-      postId = req.body.postId,
-      prevImage = req.body.previmage;
-  var date = new Date();
-  var posts = db.get('posts');
-  var categories = db.get('categories');
-  var id = new ObjectID(postId);
-  
-  
-  if(req.file){
-    var thumbImageOName = req.file.originalname,
-        thumbImageName = req.file.filename,
-        thumbImageMime = req.file.mimetype,
-        thumbImagePath = req.file.path,
-        thumbImageExt = thumbImageMime.split('/')[1],
-        thumbImageSize = req.file.size;
-  }
-  else{
-    var thumbImageName = prevImage;
-  }
-  
-  // Validattion
-  req.checkBody('title', 'Title Field is required').notEmpty();
-	req.checkBody('body', 'Body Field is required').notEmpty();
-  
-  // check errors
-  var errors = req.validationErrors();
-  
-  if(errors){
-    categories.find({}, {}, function(err, categories){
-      posts.findOne({"_id": id}, {}, function(err, post){
-        if(err) throw err;
+router.post('/edit', upload.single('thumbimage'), [
+  body('title').notEmpty().withMessage('Title Field is required'),
+  body('body').notEmpty().withMessage('Body Field is required')
+], function(req, res) {
+  const errors = validationResult(req);
+  const { title, category, body: bodyContent, postId, previmage } = req.body;
+  const date = new Date();
+  const posts = db.get('posts');
+  const categories = db.get('categories');
+  const id = new ObjectID(postId);
+  const thumbImageName = req.file ? req.file.filename : previmage;
+
+  if (!errors.isEmpty()) {
+    categories.find({}, {}, function(err, categories) {
+      posts.findOne({ "_id": id }, {}, function(err, post) {
+        if (err) throw err;
         res.render('editpost', {
-          "errors": errors,
+          "errors": errors.array(),
           "title": post.title,
           "post": post,
           "categories": categories
         });
       });
     });
-  }
-  else{
-    posts.update({"_id": id},
-    {
-      "title": title,
-      "body": body,
-      "category": category,
-      "date": date,
-      "thumbimage": thumbImageName
-    }, function(err, post){
-      if(err) {
+  } else {
+    posts.update({ "_id": id }, {
+      title,
+      body: bodyContent,
+      category,
+      date,
+      thumbimage: thumbImageName
+    }, function(err) {
+      if (err) {
         res.send("There was an issue Editing the post");
-      }
-      else{
+      } else {
         req.flash('success', 'Post Edited');
-        res.location('/posts/show/'+postId);
-        res.redirect('/posts/show/'+postId);
+        res.redirect('/posts/show/' + postId);
       }
     });
   }
-}]);
+});
 
-router.get('/delete/:id', function(req, res, next){
-  var posts = db.get('posts');
-  var id = new ObjectID(req.params.id);
-  posts.remove({"_id": id}, function(err, post){
-    if(err) throw err;
+router.get('/delete/:id', function(req, res) {
+  const posts = db.get('posts');
+  const id = new ObjectID(req.params.id);
+  posts.remove({ "_id": id }, function(err) {
+    if (err) throw err;
     req.flash('success', 'Post Deleted');
-    res.location('/');
     res.redirect('/');
   });
 });
