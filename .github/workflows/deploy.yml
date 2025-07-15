@@ -28,6 +28,8 @@ jobs:
           context: .
           push: true
           tags: emon110852/nodeblog:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to AWS
         uses: appleboy/ssh-action@master
@@ -36,7 +38,36 @@ jobs:
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
+            #!/bin/bash
+            set -e
+            
+            echo "=== Starting Deployment ==="
+            
+            # 1. Pull latest images
             docker pull emon110852/nodeblog:latest
-            docker stop nodeblog || true
-            docker rm nodeblog || true
-            docker run -d -p 3000:3000 --name nodeblog emon110852/nodeblog:latest
+            docker pull mongo:6
+            
+            # 2. Stop and remove existing containers
+            docker-compose -f ~/Nodeblog_nodejs/docker-compose.yml down || true
+            
+            # 3. Free port 3000 if needed
+            if sudo lsof -i :3000; then
+              echo "Freeing port 3000..."
+              sudo fuser -k 3000/tcp || true
+              sleep 3
+            fi
+            
+            # 4. Start services using docker-compose
+            cd ~/Nodeblog_nodejs
+            docker-compose up -d
+            
+            # 5. Verify deployment
+            echo "Waiting for services to start..."
+            sleep 10
+            docker ps -a
+            curl -I http://localhost:3000 || echo "Initial health check failed"
+            
+            echo "=== Deployment Complete ==="
+            
+            # 6. System cleanup
+            docker system prune -f
