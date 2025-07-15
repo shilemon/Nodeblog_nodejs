@@ -26,7 +26,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: yourusername/nodeblog:latest
+          tags: emon110852/nodeblog:latest
 
       - name: Deploy to AWS
         uses: appleboy/ssh-action@master
@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-            docker pull yourusername/nodeblog:latest
+            docker pull emon110852/nodeblog:latest
             docker stop nodeblog || true
             docker rm nodeblog || true
-            docker run -d -p 3000:3000 --name nodeblog yourusername/nodeblog:latest
+            docker run -d -p 3000:3000 --name nodeblog emon110852/nodeblog:latest
